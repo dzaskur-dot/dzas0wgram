@@ -1,0 +1,42 @@
+# Описание проекта для XcodeGen.
+# XcodeGen сам генерирует .xcodeproj из этого файла — так не нужно
+# коммитить в репозиторий сложный бинарный .xcodeproj вручную.
+name: Dzas0wgramm
+options:
+  bundleIdPrefix: com.dzas0w
+  deploymentTarget:
+    iOS: "16.0"
+
+packages:
+  TDLibKit:
+    url: https://github.com/Swiftgram/TDLibKit
+    from: 1.0.0   # если сборка упадёт на версии — поставьте точную версию из репозитория TDLibKit
+
+targets:
+  Dzas0wgramm:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - Sources/Dzas0wgramm
+    dependencies:
+      - package: TDLibKit
+    info:
+      path: Sources/Dzas0wgramm/Info.plist
+      properties:
+        CFBundleDisplayName: Dzas0wgramm
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dzas0w.gramm
+        PRODUCT_NAME: Dzas0wgramm
+        MARKETING_VERSION: "1.0"
+        SWIFT_VERSION: "5.0"
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
+        DEVELOPMENT_TEAM: ""
