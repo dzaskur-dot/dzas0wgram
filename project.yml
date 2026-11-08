@@ -10,7 +10,7 @@ options:
 packages:
   TDLibKit:
     url: https://github.com/Swiftgram/TDLibKit
-    from: 1.0.0   # если сборка упадёт на версии — поставьте точную версию из репозитория TDLibKit
+    branch: main
 
 targets:
   Dzas0wgramm:
