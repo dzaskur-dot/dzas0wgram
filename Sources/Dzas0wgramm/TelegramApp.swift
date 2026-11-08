@@ -13,7 +13,7 @@ import SwiftUI
 import TDLibKit
 
 let apiId =  7848805          // с my.telegram.org
-let apiHash = 2dd5e2f54ebf7dcecd0fd4bab450fe23"   // с my.telegram.org
+let apiHash = "2dd5e2f54ebf7dcecd0fd4bab450fe23"   // с my.telegram.org
 
 // MARK: - Сервис
 
