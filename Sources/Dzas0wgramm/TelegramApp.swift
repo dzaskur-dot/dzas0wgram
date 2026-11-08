@@ -70,20 +70,29 @@ final class TG: ObservableObject {
     }
 
     // MARK: Вход
-    func send(phone: String) async {
-        _ = try? await client.setAuthenticationPhoneNumber(phoneNumber: phone, settings: nil)
-    }
-    func send(code: String) async { _ = try? await client.checkAuthenticationCode(code: code) }
-    func send(password: String) async { _ = try? await client.checkAuthenticationPassword(password: password) }
+    @Published var authError: String? = nil
 
-    // MARK: Чаты и сообщения
-    func loadChats() async {
-        guard let ids = try? await client.getChats(chatList: .chatListMain, limit: 50).chatIds else { return }
-        var result: [Chat] = []
-        for id in ids {
-            if let chat = try? await client.getChat(chatId: id) { result.append(chat) }
-        }
-        chats = result
+    private func authMessage(_ error: Swift.Error) -> String {
+        let m = (error as? TDLibKit.Error)?.message ?? «\(error)»
+        if m.contains(«PASSWORD_HASH_INVALID») { return «Неверный пароль» }
+        if m.contains(«PHONE_CODE_INVALID») { return «Неверный код» }
+        return m
+    }
+
+    func send(phone: String) async {
+        authError = nil
+        do { _ = try await client.setAuthenticationPhoneNumber(phoneNumber: phone, settings: nil) }
+        catch { authError = authMessage(error) }
+    }
+    func send(code: String) async {
+        authError = nil
+        do { _ = try await client.checkAuthenticationCode(code: code) }
+        catch { authError = authMessage(error) }
+    }
+    func send(password: String) async {
+        authError = nil
+        do { _ = try await client.checkAuthenticationPassword(password: password) }
+        catch { authError = authMessage(error) }
     }
 
     func loadHistory(chatId: Int64) async {
@@ -152,6 +161,7 @@ struct InputStep: View {
     var secure = false
     let action: (String) async -> Void
     @State private var value = ""
+    @EnvironmentObject var tg: TG
 
     var body: some View {
         VStack(spacing: 16) {
@@ -162,7 +172,8 @@ struct InputStep: View {
                 else { TextField(hint, text: $value).keyboardType(.numbersAndPunctuation) }
             }
             .textFieldStyle(.roundedBorder)
-            Button("Далее") { Task { await action(value) } }
+           if let e = tg.authError { Text(e).foregroundStyle(.red).font(.footnote) }
+            Button(«Далее») { Task { await action(value) } }
                 .buttonStyle(.borderedProminent)
             Spacer()
             FooterTag() // подпись на экране регистрации/входа
