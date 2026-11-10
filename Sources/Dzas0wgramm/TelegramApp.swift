@@ -5,7 +5,7 @@ import SwiftUI
 import PhotosUI
 import TDLibKit
 
-let apiId = 7848805             // с my.telegram.org
+let apiId = 7848805           // с my.telegram.org
 let apiHash = "2dd5e2f54ebf7dcecd0fd4bab450fe23"   // с my.telegram.org
 
 // MARK: - Сервис
@@ -131,38 +131,41 @@ final class TG: ObservableObject {
     }
 
     func loadGiftsAndStars() async {
+        // Порядок аргументов строго по ошибке компилятора
         if let result = try? await client.getReceivedGifts(
             businessConnectionId: nil,
-            ownerId: .messageSenderUser(MessageSenderUser(userId: myId)),
             collectionId: 0,
-            excludeUnsaved: false,
+            excludeHosted: false,
+            excludeNonUpgradable: false,
             excludeSaved: false,
             excludeUnlimited: false,
+            excludeUnsaved: false,
             excludeUpgradable: false,
-            excludeNonUpgradable: false,
             excludeUpgraded: false,
             excludeWithoutColors: false,
-            excludeHosted: false,
-            sortByPrice: false,
+            limit: 50,
             offset: "",
-            limit: 50) {
+            ownerId: .messageSenderUser(MessageSenderUser(userId: myId)),
+            sortByPrice: false) {
             receivedGifts = result.gifts
         }
 
+        // Порядок: direction, limit, offset, ownerId, subscriptionId
         if let tx = try? await client.getStarTransactions(
-            ownerId: .messageSenderUser(MessageSenderUser(userId: myId)),
-            subscriptionId: "",
             direction: nil,
+            limit: 1,
             offset: "",
-            limit: 1) {
+            ownerId: .messageSenderUser(MessageSenderUser(userId: myId)),
+            subscriptionId: "") {
             starBalance = tx.starAmount?.starCount ?? 0
         }
     }
 
     func toggleGiftVisibility(_ gift: ReceivedGift, show: Bool) async {
+        // isSaved должен идти перед receivedGiftId
         _ = try? await client.toggleGiftIsSaved(
-            receivedGiftId: gift.receivedGiftId,
-            isSaved: show)
+            isSaved: show,
+            receivedGiftId: gift.receivedGiftId)
         await loadGiftsAndStars()
     }
 }
@@ -413,8 +416,8 @@ struct GiftRow: View {
             Image(systemName: "gift.fill").foregroundColor(.purple)
             VStack(alignment: .leading) {
                 Text("Подарок")
-                if let text = gift.text?.text, !text.isEmpty {
-                    Text(text).font(.caption).foregroundColor(.secondary)
+                if !gift.text.text.isEmpty {
+                    Text(gift.text.text).font(.caption).foregroundColor(.secondary)
                 }
             }
             Spacer()
