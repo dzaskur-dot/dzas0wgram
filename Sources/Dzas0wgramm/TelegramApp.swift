@@ -5,7 +5,7 @@ import SwiftUI
 import PhotosUI
 import TDLibKit
 
-let apiId = 7848805           // с my.telegram.org
+let apiId =7848805              // с my.telegram.org
 let apiHash = "2dd5e2f54ebf7dcecd0fd4bab450fe23"   // с my.telegram.org
 
 // MARK: - Сервис
@@ -157,7 +157,7 @@ final class TG: ObservableObject {
             offset: "",
             ownerId: .messageSenderUser(MessageSenderUser(userId: myId)),
             subscriptionId: "") {
-            starBalance = tx.starAmount?.starCount ?? 0
+            starBalance = tx.starAmount.starCount
         }
     }
 
@@ -470,4 +470,4 @@ struct MediaPicker: UIViewControllerRepresentable {
         }
     }
 }
-
+```
