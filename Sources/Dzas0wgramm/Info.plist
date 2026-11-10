@@ -16,5 +16,7 @@
 	<string>Нужно для выбора фото или видео для баннера профиля.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Нужно для сохранения медиа.</string>
+	<key>UIDesignRequiresCompatibility</key>
+	<true/>
 </dict>
 </plist>
