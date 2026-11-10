@@ -1,4 +1,3 @@
-```
 # Описание проекта для XcodeGen.
 # XcodeGen сам генерирует .xcodeproj из этого файла — так не нужно
 # коммитить в репозиторий сложный бинарный .xcodeproj вручную.
@@ -46,4 +45,3 @@ targets:
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGN_IDENTITY: ""
         DEVELOPMENT_TEAM: ""
-```
