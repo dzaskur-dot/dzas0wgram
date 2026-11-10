@@ -5,7 +5,7 @@ name: Dzas0wgramm
 options:
   bundleIdPrefix: com.dzas0w
   deploymentTarget:
-    iOS: “14.0”
+    iOS: 14.0
 
 packages:
   TDLibKit:
