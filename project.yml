@@ -16,7 +16,7 @@ targets:
   Dzas0wgramm:
     type: application
     platform: iOS
-    deploymentTarget: “14.0”
+    deploymentTarget: 14.0
     sources:
       - Sources/Dzas0wgramm
     dependencies:
