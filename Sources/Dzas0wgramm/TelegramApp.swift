@@ -470,4 +470,3 @@ struct MediaPicker: UIViewControllerRepresentable {
         }
     }
 }
-```
