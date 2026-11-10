@@ -12,5 +12,9 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Нужно для выбора фото или видео для баннера профиля.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Нужно для сохранения медиа.</string>
 </dict>
 </plist>
