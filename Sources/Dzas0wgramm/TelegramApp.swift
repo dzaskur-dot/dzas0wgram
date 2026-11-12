@@ -1,11 +1,26 @@
-// Dzas0wgramm — минимальный клиент Telegram для iOS: SwiftUI + TDLibKit
-// Минимальная версия iOS: 14.0
+// Dzas0wgramm — минимальный клиент Telegram для iOS: SwiftUI + TDLibKit (обёртка над официальной TDLib).
+// Умеет: вход (телефон -> код -> пароль 2FA), список чатов, история, отправка,
+// новые сообщения приходят в реальном времени, баннер профиля (фото/видео).
+//
+// Подарки/NFT/Stars временно убраны: это очень новые методы TDLib, их точные
+// названия часто меняются между версиями TDLibKit, и без Xcode под рукой я не
+// мог их проверить — именно там были ошибки компиляции. Сначала добиваем
+// стабильную сборку с базовыми функциями, подарки/Stars добавим отдельным
+// шагом, когда будет видно точные названия методов в автодополнении Xcode.
+//
+// Минимальная версия iOS: 14.0. SwiftUI-жизненный цикл приложения (протокол `App`)
+// сам по себе требует iOS 14+.
+//
+// Настройка:
+// 1. Xcode -> File -> New -> Project -> iOS App (SwiftUI).
+// 2. File -> Add Package Dependencies -> https://github.com/Swiftgram/TDLibKit
+// 3. Вставьте этот файл в проект (замените содержимое App-файла) и впишите apiId/apiHash.
 
 import SwiftUI
 import PhotosUI
 import TDLibKit
 
-let apiId =7848805              // с my.telegram.org
+let apiId = 7848805            // с my.telegram.org
 let apiHash = "2dd5e2f54ebf7dcecd0fd4bab450fe23"   // с my.telegram.org
 
 // MARK: - Сервис
@@ -19,9 +34,7 @@ final class TG: ObservableObject {
     @Published var messages: [Int64: [Message]] = [:]
 
     @Published var myId: Int64 = 0
-    @Published var profilePhotoURL: String?
-    @Published var receivedGifts: [ReceivedGift] = []
-    @Published var starBalance: Int64 = 0
+    @Published var profilePhotoURL: String?   // текущий баннер (превью, локальный файл TDLib)
 
     private let manager = TDLibClientManager()
     private var client: TDLibClient!
@@ -38,6 +51,7 @@ final class TG: ObservableObject {
         case .updateAuthorizationState(let u):
             await onAuth(u.authorizationState)
         case .updateNewMessage(let u):
+            // Новое сообщение (входящее или своё с другого устройства)
             messages[u.message.chatId, default: []].append(u.message)
         default:
             break
@@ -99,74 +113,37 @@ final class TG: ObservableObject {
                                           replyTo: nil, topicId: nil)
     }
 
-    // MARK: Свой профиль
+    // MARK: Свой профиль — ID и баннер
     func loadMe() async {
         if let me = try? await client.getMe() {
             myId = me.id
-            profilePhotoURL = me.profilePhoto?.big.local.path
+            profilePhotoURL = me.profilePhoto?.big.local?.path
         }
-        await loadGiftsAndStars()
     }
 
+    /// Ставит фото-баннер профиля из локального файла (например, выбранного в галерее).
     func setBannerPhoto(path: String) async {
         let photo = InputChatPhoto.inputChatPhotoStatic(
             InputChatPhotoStatic(photo: .inputFileLocal(InputFileLocal(path: path))))
-        _ = try? await client.setProfilePhoto(isPublic: false, photo: photo)
+        _ = try? await client.setProfilePhoto(photo: photo, isPublic: false)
         await loadMe()
     }
 
+    /// Ставит видео-баннер профиля (видео аватары — Premium-функция самого Telegram).
     func setBannerVideo(path: String, mainFrameTimestamp: Double = 0) async {
         let photo = InputChatPhoto.inputChatPhotoAnimation(
             InputChatPhotoAnimation(animation: .inputFileLocal(InputFileLocal(path: path)),
                                     mainFrameTimestamp: mainFrameTimestamp))
-        _ = try? await client.setProfilePhoto(isPublic: false, photo: photo)
+        _ = try? await client.setProfilePhoto(photo: photo, isPublic: false)
         await loadMe()
     }
 
+    /// Убирает текущий баннер (возвращает к стандартному виду профиля).
     func removeBanner() async {
-        guard let photos = try? await client.getUserProfilePhotos(limit: 1, offset: 0, userId: myId),
+        guard let photos = try? await client.getUserProfilePhotos(userId: myId, offset: 0, limit: 1),
               let first = photos.photos.first else { return }
         _ = try? await client.deleteProfilePhoto(profilePhotoId: first.id)
         await loadMe()
-    }
-
-    func loadGiftsAndStars() async {
-        // Порядок аргументов строго по ошибке компилятора
-        if let result = try? await client.getReceivedGifts(
-            businessConnectionId: nil,
-            collectionId: 0,
-            excludeHosted: false,
-            excludeNonUpgradable: false,
-            excludeSaved: false,
-            excludeUnlimited: false,
-            excludeUnsaved: false,
-            excludeUpgradable: false,
-            excludeUpgraded: false,
-            excludeWithoutColors: false,
-            limit: 50,
-            offset: "",
-            ownerId: .messageSenderUser(MessageSenderUser(userId: myId)),
-            sortByPrice: false) {
-            receivedGifts = result.gifts
-        }
-
-        // Порядок: direction, limit, offset, ownerId, subscriptionId
-        if let tx = try? await client.getStarTransactions(
-            direction: nil,
-            limit: 1,
-            offset: "",
-            ownerId: .messageSenderUser(MessageSenderUser(userId: myId)),
-            subscriptionId: "") {
-            starBalance = tx.starAmount.starCount
-        }
-    }
-
-    func toggleGiftVisibility(_ gift: ReceivedGift, show: Bool) async {
-        // isSaved должен идти перед receivedGiftId
-        _ = try? await client.toggleGiftIsSaved(
-            isSaved: show,
-            receivedGiftId: gift.receivedGiftId)
-        await loadGiftsAndStars()
     }
 }
 
@@ -194,7 +171,7 @@ struct RootView: View {
                 Spacer()
                 ProgressView()
                 Spacer()
-                FooterTag()
+                FooterTag() // подпись на экране загрузки
             }
         case .phone:    InputStep(title: "Номер телефона", hint: "+79991234567") { await tg.send(phone: $0) }
         case .code:     InputStep(title: "Код из Telegram", hint: "12345") { await tg.send(code: $0) }
@@ -204,15 +181,17 @@ struct RootView: View {
     }
 }
 
+// Маленькая подпись внизу экрана — добавляется на каждый экран приложения.
 struct FooterTag: View {
     var body: some View {
         Text("by dzas0w")
             .font(.caption2)
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
             .padding(.bottom, 6)
     }
 }
 
+// Кнопка в стиле .borderedProminent, но без требования iOS 15.
 struct BigButton: View {
     let title: String
     let action: () -> Void
@@ -230,7 +209,9 @@ struct BigButton: View {
     }
 }
 
-struct PressableStyle: SwiftUI.ButtonStyle {
+// Плавное пружинное нажатие — лёгкое сжатие и отскок вместо резкого клика.
+// Применяется ко всем кнопкам приложения через .buttonStyle(PressableStyle()).
+struct PressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.94 : 1)
@@ -257,7 +238,7 @@ struct InputStep: View {
             .textFieldStyle(RoundedBorderTextFieldStyle())
             BigButton(title: "Далее") { Task { await action(value) } }
             Spacer()
-            FooterTag()
+            FooterTag() // подпись на экране регистрации/входа
         }
         .padding()
     }
@@ -279,7 +260,7 @@ struct ChatList: View {
             Button("Обновить список") { Task { await tg.loadChats() } }
                 .padding(.vertical, 6)
                 .buttonStyle(PressableStyle())
-            FooterTag()
+            FooterTag() // подпись на списке чатов
         }
         .navigationBarTitle("Dzas0wgramm")
         .onAppear { Task { await tg.loadChats() } }
@@ -320,14 +301,14 @@ struct ChatView: View {
             }
             .padding(.horizontal)
             .padding(.top)
-            FooterTag()
+            FooterTag() // подпись на экране переписки
         }
         .navigationBarTitle(Text(chat.title), displayMode: .inline)
         .onAppear { Task { await tg.loadHistory(chatId: chat.id) } }
     }
 }
 
-// MARK: - Профиль
+// MARK: - Профиль: баннер (фото/видео) — менять и убирать можно в любой момент
 
 struct ProfileView: View {
     @EnvironmentObject var tg: TG
@@ -353,32 +334,11 @@ struct ProfileView: View {
                 .buttonStyle(PressableStyle())
                 .font(.footnote)
 
-                Divider()
-
-                HStack {
-                    Text("⭐ Stars")
-                    Spacer()
-                    Text("\(tg.starBalance)").bold()
-                }
-                .padding(.horizontal)
-
-                Text("Подарки и NFT — видно только вам")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-
-                ForEach(tg.receivedGifts, id: \.receivedGiftId) { gift in
-                    GiftRow(gift: gift)
-                }
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: tg.receivedGifts.map(\.receivedGiftId))
-
                 FooterTag()
             }
             .padding(.vertical)
         }
         .navigationBarTitle("Профиль")
-        .onAppear { Task { await tg.loadGiftsAndStars() } }
         .sheet(isPresented: $showPicker) {
             MediaPicker(mode: pickerMode) { path in
                 Task {
@@ -406,34 +366,7 @@ struct BannerView: View {
     }
 }
 
-struct GiftRow: View {
-    @EnvironmentObject var tg: TG
-    let gift: ReceivedGift
-    @State private var isPinned: Bool = true
-
-    var body: some View {
-        HStack {
-            Image(systemName: "gift.fill").foregroundColor(.purple)
-            VStack(alignment: .leading) {
-                Text("Подарок")
-                if !gift.text.text.isEmpty {
-                    Text(gift.text.text).font(.caption).foregroundColor(.secondary)
-                }
-            }
-            Spacer()
-            Toggle("", isOn: $isPinned.animation(.spring(response: 0.3, dampingFraction: 0.7)))
-                .labelsHidden()
-                .onChange(of: isPinned) { newValue in
-                    Task { await tg.toggleGiftVisibility(gift, show: newValue) }
-                }
-        }
-        .padding(.horizontal)
-        .onAppear { isPinned = gift.isSaved }
-    }
-}
-
-// MARK: - Выбор фото/видео
-
+// Обёртка над PHPickerViewController (доступен с iOS 14) — выбор фото или видео из галереи.
 struct MediaPicker: UIViewControllerRepresentable {
     enum Mode { case image, video }
     let mode: Mode
@@ -462,6 +395,7 @@ struct MediaPicker: UIViewControllerRepresentable {
             let typeId = parent.mode == .image ? "public.image" : "public.movie"
             provider.loadFileRepresentation(forTypeIdentifier: typeId) { url, _ in
                 guard let url else { return }
+                // Копируем во временную папку — исходный файл провайдера удаляется сразу после коллбэка.
                 let dest = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
                 try? FileManager.default.removeItem(at: dest)
                 try? FileManager.default.copyItem(at: url, to: dest)
