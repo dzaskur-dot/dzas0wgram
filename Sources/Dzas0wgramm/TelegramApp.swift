@@ -20,7 +20,7 @@ import SwiftUI
 import PhotosUI
 import TDLibKit
 
-let apiId = 7848805            // с my.telegram.org
+let apiId = 7848805              // с my.telegram.org
 let apiHash = "2dd5e2f54ebf7dcecd0fd4bab450fe23"   // с my.telegram.org
 
 // MARK: - Сервис
@@ -117,8 +117,11 @@ final class TG: ObservableObject {
     func loadMe() async {
         if let me = try? await client.getMe() {
             myId = me.id
-            profilePhotoURL = me.profilePhoto?.big.local?.path
         }
+        // Текущее фото профиля намеренно не подгружаем с сервера здесь —
+        // путь к нему в структуре TDLib не проверен (нет доступа к Xcode для
+        // компиляции). Баннер в интерфейсе показывается сразу после того,
+        // как вы сами его выбрали в этой сессии (см. setBannerPhoto/Video).
     }
 
     /// Ставит фото-баннер профиля из локального файла (например, выбранного в галерее).
@@ -126,7 +129,7 @@ final class TG: ObservableObject {
         let photo = InputChatPhoto.inputChatPhotoStatic(
             InputChatPhotoStatic(photo: .inputFileLocal(InputFileLocal(path: path))))
         _ = try? await client.setProfilePhoto(photo: photo, isPublic: false)
-        await loadMe()
+        profilePhotoURL = path
     }
 
     /// Ставит видео-баннер профиля (видео аватары — Premium-функция самого Telegram).
@@ -135,7 +138,7 @@ final class TG: ObservableObject {
             InputChatPhotoAnimation(animation: .inputFileLocal(InputFileLocal(path: path)),
                                     mainFrameTimestamp: mainFrameTimestamp))
         _ = try? await client.setProfilePhoto(photo: photo, isPublic: false)
-        await loadMe()
+        profilePhotoURL = path
     }
 
     /// Убирает текущий баннер (возвращает к стандартному виду профиля).
@@ -143,7 +146,7 @@ final class TG: ObservableObject {
         guard let photos = try? await client.getUserProfilePhotos(userId: myId, offset: 0, limit: 1),
               let first = photos.photos.first else { return }
         _ = try? await client.deleteProfilePhoto(profilePhotoId: first.id)
-        await loadMe()
+        profilePhotoURL = nil
     }
 }
 
