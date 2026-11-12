@@ -128,7 +128,7 @@ final class TG: ObservableObject {
     func setBannerPhoto(path: String) async {
         let photo = InputChatPhoto.inputChatPhotoStatic(
             InputChatPhotoStatic(photo: .inputFileLocal(InputFileLocal(path: path))))
-        _ = try? await client.setProfilePhoto(photo: photo, isPublic: false)
+        _ = try? await client.setProfilePhoto(isPublic: false, photo: photo)
         profilePhotoURL = path
     }
 
@@ -137,13 +137,13 @@ final class TG: ObservableObject {
         let photo = InputChatPhoto.inputChatPhotoAnimation(
             InputChatPhotoAnimation(animation: .inputFileLocal(InputFileLocal(path: path)),
                                     mainFrameTimestamp: mainFrameTimestamp))
-        _ = try? await client.setProfilePhoto(photo: photo, isPublic: false)
+        _ = try? await client.setProfilePhoto(isPublic: false, photo: photo)
         profilePhotoURL = path
     }
 
     /// Убирает текущий баннер (возвращает к стандартному виду профиля).
     func removeBanner() async {
-        guard let photos = try? await client.getUserProfilePhotos(userId: myId, offset: 0, limit: 1),
+        guard let photos = try? await client.getUserProfilePhotos(limit: 1, offset: 0, userId: myId),
               let first = photos.photos.first else { return }
         _ = try? await client.deleteProfilePhoto(profilePhotoId: first.id)
         profilePhotoURL = nil
@@ -189,7 +189,7 @@ struct FooterTag: View {
     var body: some View {
         Text("by dzas0w")
             .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundColor(.secondary)
             .padding(.bottom, 6)
     }
 }
@@ -214,8 +214,10 @@ struct BigButton: View {
 
 // Плавное пружинное нажатие — лёгкое сжатие и отскок вместо резкого клика.
 // Применяется ко всем кнопкам приложения через .buttonStyle(PressableStyle()).
-struct PressableStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
+// Указываем SwiftUI.ButtonStyle явно: у TDLibKit есть свой тип с таким же именем
+// (для кнопок ботов Telegram), и без уточнения компилятор не может выбрать нужный.
+struct PressableStyle: SwiftUI.ButtonStyle {
+    func makeBody(configuration: SwiftUI.ButtonStyleConfiguration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.94 : 1)
             .opacity(configuration.isPressed ? 0.85 : 1)
